@@ -1,0 +1,2 @@
+V	201011082626Z		01	unknown	/C=CN/ST=beijing/L=beijing/OU=dev/CN=server.dev
+V	201011083415Z		02	unknown	/C=CN/ST=beijing/L=beijing/O=Internet Widgits Pty Ltd/OU=dev/CN=client.dev
