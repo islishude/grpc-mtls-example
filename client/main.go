@@ -29,14 +29,13 @@ func main() {
 		return
 	}
 
-	// Make sure that `127.0.0.1 => server.dev`
 	transportCreds := credentials.NewTLS(&tls.Config{
-		ServerName:   "server.dev",
+		ServerName:   "dev.local",
 		Certificates: []tls.Certificate{certificate},
 		RootCAs:      certPool,
 	})
 
-	conn, err := grpc.Dial("server.dev:10200", grpc.WithTransportCredentials(transportCreds))
+	conn, err := grpc.Dial("127.0.0.1:10200", grpc.WithTransportCredentials(transportCreds))
 	if err != nil {
 		log.Printf("failed to dial server: %s\n", err)
 		return
