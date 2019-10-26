@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 
 	"example.com/mtls/hello"
 )
@@ -27,28 +28,21 @@ type helloController struct{}
 func (hc *helloController) SayHello(ctx context.Context, req *hello.Request) (*hello.Response, error) {
 	name := req.GetName()
 	if name == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "")
+		return nil, status.Errorf(codes.InvalidArgument, "")
 	}
-
+	log.Println("Request from", name)
 	return &hello.Response{Greet: fmt.Sprintf("Hello,%s", name)}, nil
 }
 
 func main() {
-	certificate, err := tls.LoadX509KeyPair("server/cert.pem", "server/key.pem")
-
+	certificate, err := tls.LoadX509KeyPair("server/server.local-cert.pem", "server/server.local-key.pem")
 	certPool := x509.NewCertPool()
-	bs, err := ioutil.ReadFile("ca/cacert.pem")
+	bs, err := ioutil.ReadFile("demoCA/cacert.pem")
 	if err != nil {
-		log.Printf("failed to read client ca cert: %s", err)
-		return
+		log.Fatalf("failed to read client ca cert: %s", err)
 	}
 
-	ok := certPool.AppendCertsFromPEM(bs)
-	if !ok {
-		log.Println("failed to append client certs")
-		return
-	}
-
+	certPool.AppendCertsFromPEM(bs)
 	tlsConfig := &tls.Config{
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		Certificates: []tls.Certificate{certificate},
@@ -63,7 +57,7 @@ func main() {
 		if err != nil {
 			log.Fatalln("failed to listen", err)
 		}
-		log.Println("Listening :10200 port")
+		log.Println("Listening :10200 and serving...")
 		if err := server.Serve(lis); err != nil {
 			log.Fatalln("grpc.Serve error", err)
 		}

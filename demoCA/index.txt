@@ -1,0 +1,2 @@
+V	291023025024Z		01	unknown	/C=AU/ST=Some-State/L=Some-City/O=Internet Widgits Pty Ltd/OU=local test/CN=client.local/emailAddress=it@test.local
+V	291023025549Z		02	unknown	/C=AU/ST=Some-State/L=Some-City/O=Internet Widgits Pty Ltd/OU=local test/CN=server.local/emailAddress=it@test.local

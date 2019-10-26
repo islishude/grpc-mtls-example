@@ -15,20 +15,14 @@ import (
 )
 
 func main() {
-	certificate, err := tls.LoadX509KeyPair("client/cert.pem", "client/key.pem")
+	certificate, err := tls.LoadX509KeyPair("client/client.local-cert.pem", "client/client.local-key.pem")
 	certPool := x509.NewCertPool()
-
-	caCert, err := ioutil.ReadFile("ca/cacert.pem")
+	caCert, err := ioutil.ReadFile("demoCA/cacert.pem")
 	if err != nil {
-		log.Printf("Read CA certs failed %s\n", err)
-		return
+		log.Fatalf("Read CA certs failed %s\n", err)
 	}
 
-	if !certPool.AppendCertsFromPEM(caCert) {
-		log.Println("Add CA cert to certs pool failed")
-		return
-	}
-
+	certPool.AppendCertsFromPEM(caCert)
 	transportCreds := credentials.NewTLS(&tls.Config{
 		ServerName:   "dev.local",
 		Certificates: []tls.Certificate{certificate},
@@ -37,7 +31,7 @@ func main() {
 
 	conn, err := grpc.Dial("127.0.0.1:10200", grpc.WithTransportCredentials(transportCreds))
 	if err != nil {
-		log.Printf("failed to dial server: %s\n", err)
+		log.Fatalf("failed to dial server: %s\n", err)
 		return
 	}
 	defer conn.Close()
