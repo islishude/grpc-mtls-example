@@ -24,7 +24,7 @@ func main() {
 
 	certPool.AppendCertsFromPEM(caCert)
 	transportCreds := credentials.NewTLS(&tls.Config{
-		ServerName:   "dev.local",
+		// ServerName: "If use DNS then use it",
 		Certificates: []tls.Certificate{certificate},
 		RootCAs:      certPool,
 	})
