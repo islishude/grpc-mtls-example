@@ -24,12 +24,13 @@ func main() {
 
 	certPool.AppendCertsFromPEM(caCert)
 	transportCreds := credentials.NewTLS(&tls.Config{
-		// ServerName: "If use DNS then use it",
+		ServerName:   "dev.local",
 		Certificates: []tls.Certificate{certificate},
 		RootCAs:      certPool,
 	})
 
-	conn, err := grpc.Dial("127.0.0.1:10200", grpc.WithTransportCredentials(transportCreds))
+	// add `127.0.0.1 dev.local` to `/etc/hosts`
+	conn, err := grpc.Dial("dev.local:10200", grpc.WithTransportCredentials(transportCreds))
 	if err != nil {
 		log.Fatalf("failed to dial server: %s\n", err)
 		return
