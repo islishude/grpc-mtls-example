@@ -4,47 +4,50 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
-	"log"
-	"time"
+	"test/greet"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
-	"example.com/mtls/hello"
 )
 
-func main() {
-	certificate, err := tls.LoadX509KeyPair("client/client.local-cert.pem", "client/client.local-key.pem")
-	certPool := x509.NewCertPool()
-	caCert, err := ioutil.ReadFile("demoCA/cacert.pem")
+func NewTLS() credentials.TransportCredentials {
+	certificate, err := tls.LoadX509KeyPair("client/cert.pem", "client/cert-key.pem")
 	if err != nil {
-		log.Fatalf("Read CA certs failed %s\n", err)
+		panic("Load client certification failed: " + err.Error())
 	}
 
-	certPool.AppendCertsFromPEM(caCert)
-	transportCreds := credentials.NewTLS(&tls.Config{
-		ServerName:   "dev.local",
+	data, err := ioutil.ReadFile("rootca/rootca.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(data) {
+		panic("can't add CA cert")
+	}
+
+	tlsConfig := &tls.Config{
+		ServerName:   "localhost",
 		Certificates: []tls.Certificate{certificate},
 		RootCAs:      certPool,
-	})
+	}
 
-	// add `127.0.0.1 dev.local` to `/etc/hosts`
-	conn, err := grpc.Dial("dev.local:10200", grpc.WithTransportCredentials(transportCreds))
+	return credentials.NewTLS(tlsConfig)
+}
+
+func main() {
+	conn, err := grpc.Dial("localhost:10200", grpc.WithTransportCredentials(NewTLS()))
 	if err != nil {
-		log.Fatalf("failed to dial server: %s\n", err)
-		return
+		panic(err)
 	}
 	defer conn.Close()
 
-	client := hello.NewHelloClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	resp, err := client.SayHello(ctx, &hello.Request{Name: "world"})
+	client := greet.NewGreetingClient(conn)
+	resp, err := client.SayHello(context.Background(), &greet.SayHelloRequest{Name: "world"})
 	if err != nil {
-		log.Println("Call SayHello failed", err.Error())
-		return
+		panic(err)
 	}
-	log.Println("Message from server", resp.GetGreet())
+	fmt.Println(resp.GetGreet())
 }

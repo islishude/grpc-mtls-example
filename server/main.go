@@ -4,84 +4,85 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+	"test/greet"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/status"
-
-	"example.com/mtls/hello"
+	"google.golang.org/grpc/peer"
 )
 
-var _ hello.HelloServer = (*helloController)(nil)
+func main() {
+	server := grpc.NewServer(
+		grpc.Creds(NewTLS()),
+		grpc.UnaryInterceptor(middlefunc),
+	)
 
-type helloController struct{}
+	greet.RegisterGreetingServer(server, new(GreetServer))
 
-func (hc *helloController) SayHello(ctx context.Context, req *hello.Request) (*hello.Response, error) {
-	name := req.GetName()
-	if name == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "")
-	}
-	log.Println("Request from", name)
-	return &hello.Response{Greet: fmt.Sprintf("Hello,%s", name)}, nil
+	go func() {
+		l, err := net.Listen("tcp", ":10200")
+		if err != nil {
+			panic(err)
+		}
+		log.Println("listen and server...")
+		if err := server.Serve(l); err != nil {
+			panic(err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	<-stop
+	server.GracefulStop()
+	log.Println("bye")
 }
 
-func main() {
-	certificate, err := tls.LoadX509KeyPair("server/server.local-cert.pem", "server/server.local-key.pem")
-	certPool := x509.NewCertPool()
-	bs, err := ioutil.ReadFile("demoCA/cacert.pem")
+func middlefunc(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	// get client tls info
+	if p, ok := peer.FromContext(ctx); ok {
+		if mtls, ok := p.AuthInfo.(credentials.TLSInfo); ok {
+			for _, item := range mtls.State.PeerCertificates {
+				log.Println(item.Subject)
+			}
+		}
+	}
+	return handler(ctx, req)
+}
+
+type GreetServer struct{}
+
+func (g *GreetServer) SayHello(ctx context.Context, req *greet.SayHelloRequest) (*greet.SayHelloResponse, error) {
+	respdata := "Hello," + req.GetName()
+	return &greet.SayHelloResponse{Greet: respdata}, nil
+}
+
+func NewTLS() credentials.TransportCredentials {
+	certificate, err := tls.LoadX509KeyPair("server/cert.pem", "server/cert-key.pem")
 	if err != nil {
-		log.Fatalf("failed to read client ca cert: %s", err)
+		panic("Load server certification failed: " + err.Error())
 	}
 
-	certPool.AppendCertsFromPEM(bs)
+	data, err := ioutil.ReadFile("rootca/rootca.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(data) {
+		panic("can't add ca cert")
+	}
+
 	tlsConfig := &tls.Config{
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		Certificates: []tls.Certificate{certificate},
 		ClientCAs:    certPool,
 	}
-
-	server := grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)))
-	hello.RegisterHelloServer(server, new(helloController))
-
-	go func() {
-		lis, err := net.Listen("tcp", ":10200")
-		if err != nil {
-			log.Fatalln("failed to listen", err)
-		}
-		log.Println("Listening :10200 and serving...")
-		if err := server.Serve(lis); err != nil {
-			log.Fatalln("grpc.Serve error", err)
-		}
-	}()
-
-	killSignals := make(chan os.Signal, 1)
-	signal.Notify(killSignals, syscall.SIGINT, syscall.SIGTERM)
-
-	<-killSignals
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	graceful := make(chan struct{})
-
-	go func() {
-		server.GracefulStop()
-		close(graceful)
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Println("graceful stop timeout")
-	case <-graceful:
-		log.Println("bye")
-	}
+	return credentials.NewTLS(tlsConfig)
 }
