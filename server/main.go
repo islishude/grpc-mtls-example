@@ -10,8 +10,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"test/greet"
 
+	"github.com/islishude/grpc-mtls-example/greet"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -19,7 +19,7 @@ import (
 
 func main() {
 	server := grpc.NewServer(
-		grpc.Creds(NewTLS()),
+		grpc.Creds(LoadKeyPair()),
 		grpc.UnaryInterceptor(middlefunc),
 	)
 
@@ -63,26 +63,26 @@ func (g *GreetServer) SayHello(ctx context.Context, req *greet.SayHelloRequest) 
 	return &greet.SayHelloResponse{Greet: respdata}, nil
 }
 
-func NewTLS() credentials.TransportCredentials {
-	certificate, err := tls.LoadX509KeyPair("server/cert.pem", "server/cert-key.pem")
+func LoadKeyPair() credentials.TransportCredentials {
+	certificate, err := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
 	if err != nil {
 		panic("Load server certification failed: " + err.Error())
 	}
 
-	data, err := ioutil.ReadFile("rootca/rootca.pem")
+	data, err := ioutil.ReadFile("certs/ca.crt")
 	if err != nil {
-		panic(err)
+		panic("can't read ca file")
 	}
 
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(data) {
+	capool := x509.NewCertPool()
+	if !capool.AppendCertsFromPEM(data) {
 		panic("can't add ca cert")
 	}
 
 	tlsConfig := &tls.Config{
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		Certificates: []tls.Certificate{certificate},
-		ClientCAs:    certPool,
+		ClientCAs:    capool,
 	}
 	return credentials.NewTLS(tlsConfig)
 }

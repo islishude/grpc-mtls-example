@@ -6,39 +6,38 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"test/greet"
 
+	"github.com/islishude/grpc-mtls-example/greet"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-func NewTLS() credentials.TransportCredentials {
-	certificate, err := tls.LoadX509KeyPair("client/cert.pem", "client/cert-key.pem")
+func LoadKeyPair() credentials.TransportCredentials {
+	certificate, err := tls.LoadX509KeyPair("certs/client.crt", "certs/client.key")
 	if err != nil {
 		panic("Load client certification failed: " + err.Error())
 	}
 
-	data, err := ioutil.ReadFile("rootca/rootca.pem")
+	ca, err := ioutil.ReadFile("certs/ca.crt")
 	if err != nil {
-		panic(err)
+		panic("can't read ca file")
 	}
 
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(data) {
+	capool := x509.NewCertPool()
+	if !capool.AppendCertsFromPEM(ca) {
 		panic("can't add CA cert")
 	}
 
 	tlsConfig := &tls.Config{
-		ServerName:   "localhost",
 		Certificates: []tls.Certificate{certificate},
-		RootCAs:      certPool,
+		RootCAs:      capool,
 	}
 
 	return credentials.NewTLS(tlsConfig)
 }
 
 func main() {
-	conn, err := grpc.Dial("localhost:10200", grpc.WithTransportCredentials(NewTLS()))
+	conn, err := grpc.Dial("localhost:10200", grpc.WithTransportCredentials(LoadKeyPair()))
 	if err != nil {
 		panic(err)
 	}
