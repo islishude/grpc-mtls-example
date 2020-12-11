@@ -2,8 +2,10 @@ syntax = "proto3";
 
 package greet;
 
+option go_package = "github.com/islishude/grpc-mtls-example/greet";
+
 message SayHelloRequest { string name = 1; }
 
 message SayHelloResponse { string greet = 1; }
 
-service Greeting { rpc SayHello(SayHelloRequest) returns (SayHelloResponse); }
+service Greeting { rpc SayHello(SayHelloRequest) returns(SayHelloResponse); }
