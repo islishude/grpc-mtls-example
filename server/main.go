@@ -30,7 +30,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		log.Println("listen and server...")
+		log.Println("listen and serveing...")
 		if err := server.Serve(l); err != nil {
 			panic(err)
 		}
@@ -49,14 +49,16 @@ func middlefunc(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo
 	if p, ok := peer.FromContext(ctx); ok {
 		if mtls, ok := p.AuthInfo.(credentials.TLSInfo); ok {
 			for _, item := range mtls.State.PeerCertificates {
-				log.Println(item.Subject)
+				log.Println("request certificate subject:", item.Subject)
 			}
 		}
 	}
 	return handler(ctx, req)
 }
 
-type GreetServer struct{}
+type GreetServer struct {
+	greet.UnimplementedGreetingServer
+}
 
 func (g *GreetServer) SayHello(ctx context.Context, req *greet.SayHelloRequest) (*greet.SayHelloResponse, error) {
 	respdata := "Hello," + req.GetName()
