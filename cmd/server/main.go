@@ -68,12 +68,12 @@ func (g *GreetServer) SayHello(ctx context.Context, req *greet.SayHelloRequest) 
 func LoadKeyPair() credentials.TransportCredentials {
 	certificate, err := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
 	if err != nil {
-		panic("Load server certification failed: " + err.Error())
+		panic("failed to load server certification: " + err.Error())
 	}
 
 	data, err := ioutil.ReadFile("certs/ca.crt")
 	if err != nil {
-		panic("can't read ca file")
+		panic("failed to load CA file: " + err.Error())
 	}
 
 	capool := x509.NewCertPool()

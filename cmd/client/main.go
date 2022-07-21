@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"os"
 
 	"github.com/islishude/grpc-mtls-example/greet"
 	"google.golang.org/grpc"
@@ -25,7 +26,7 @@ func LoadKeyPair() credentials.TransportCredentials {
 
 	capool := x509.NewCertPool()
 	if !capool.AppendCertsFromPEM(ca) {
-		panic("can't add CA cert")
+		panic("invalid CA file")
 	}
 
 	tlsConfig := &tls.Config{
@@ -44,7 +45,12 @@ func main() {
 	defer conn.Close()
 
 	client := greet.NewGreetingClient(conn)
-	resp, err := client.SayHello(context.Background(), &greet.SayHelloRequest{Name: "world"})
+
+	var name = "world"
+	if len(os.Args) > 1 {
+		name = os.Args[1]
+	}
+	resp, err := client.SayHello(context.Background(), &greet.SayHelloRequest{Name: name})
 	if err != nil {
 		panic(err)
 	}
