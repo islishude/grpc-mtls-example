@@ -65,10 +65,12 @@ cfssl genkey csr.json | cfssljson -bare client
 
 you will get 4 files:
 
-- server.csr Server side CSR
+- server.csr Server CSR
 - server-key.pem Server key
-- client.csr Client side CSR
-- server-key.pem Client key
+- client.csr Client CSR
+- client-key.pem Client key
+
+the CSR files will be used for signing new certificate
 
 4. Sign new certificates by your self-signed root CA
 
