@@ -82,4 +82,4 @@ you will get your server and client certificates
 - server.pem
 - client.pem
 
-For more detail about `cfss.json` and `csr.json`, check out cfsll documentation.
+For more details about `cfss.json` and `csr.json`, check out [cfssl](https://github.com/cloudflare/cfssl) documentation.
