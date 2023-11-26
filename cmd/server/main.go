@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -18,38 +18,41 @@ import (
 )
 
 func main() {
-	server := grpc.NewServer(
-		grpc.Creds(LoadKeyPair()),
-		grpc.UnaryInterceptor(middlefunc),
-	)
+	tlsConfig, err := LoadTlSConfig("server.pem", "server-key.pem", "root.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	server := grpc.NewServer(grpc.Creds(tlsConfig), grpc.UnaryInterceptor(MiddlewareHandler))
 
 	greet.RegisterGreetingServer(server, new(GreetServer))
 
+	basectx, casncel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer casncel()
+
+	listener, err := net.Listen("tcp", ":10200")
+	if err != nil {
+		panic(err)
+	}
+
 	go func() {
-		l, err := net.Listen("tcp", ":10200")
-		if err != nil {
-			panic(err)
-		}
-		log.Println("listen and serveing...")
-		if err := server.Serve(l); err != nil {
-			panic(err)
-		}
+		<-basectx.Done()
+		server.GracefulStop()
+		log.Println("bye")
 	}()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-
-	<-stop
-	server.GracefulStop()
-	log.Println("bye")
+	log.Println("listen and serving...")
+	if err := server.Serve(listener); err != nil {
+		panic(err)
+	}
 }
 
-func middlefunc(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	// get client tls info
+func MiddlewareHandler(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	// you can write your own code here to check client tls certificate
 	if p, ok := peer.FromContext(ctx); ok {
 		if mtls, ok := p.AuthInfo.(credentials.TLSInfo); ok {
 			for _, item := range mtls.State.PeerCertificates {
-				log.Println("request certificate subject:", item.Subject)
+				log.Println("client certificate subject:", item.Subject)
 			}
 		}
 	}
@@ -65,20 +68,20 @@ func (g *GreetServer) SayHello(ctx context.Context, req *greet.SayHelloRequest) 
 	return &greet.SayHelloResponse{Greet: respdata}, nil
 }
 
-func LoadKeyPair() credentials.TransportCredentials {
-	certificate, err := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
+func LoadTlSConfig(certFile, keyFile, caFile string) (credentials.TransportCredentials, error) {
+	certificate, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		panic("failed to load server certification: " + err.Error())
+		return nil, fmt.Errorf("failed to load server certification: %w", err)
 	}
 
-	data, err := ioutil.ReadFile("certs/ca.crt")
+	data, err := os.ReadFile(caFile)
 	if err != nil {
-		panic("failed to load CA file: " + err.Error())
+		return nil, fmt.Errorf("faild to read CA certificate: %w", err)
 	}
 
 	capool := x509.NewCertPool()
 	if !capool.AppendCertsFromPEM(data) {
-		panic("can't add ca cert")
+		return nil, fmt.Errorf("unable to append the CA certificate to CA pool")
 	}
 
 	tlsConfig := &tls.Config{
@@ -86,5 +89,5 @@ func LoadKeyPair() credentials.TransportCredentials {
 		Certificates: []tls.Certificate{certificate},
 		ClientCAs:    capool,
 	}
-	return credentials.NewTLS(tlsConfig)
+	return credentials.NewTLS(tlsConfig), nil
 }
