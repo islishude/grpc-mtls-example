@@ -1,4 +1,4 @@
-# GRPC mTLS example
+# gRPC mTLS example
 
 ## Install protoc
 
@@ -16,6 +16,12 @@ by the way, you can also install clang-format for formating the proto files.
 
 ```
 brew install clang-format
+```
+
+and run following command to format the protobuf files
+
+```sh
+clang-format -i greet/*.proto
 ```
 
 ## Install protoc generator for golang
@@ -94,7 +100,7 @@ go build -o ./dist ./cmd/...
 
 ```console
 $ ./dist/server
-2022/07/21 22:18:20 listen and serveing...
+2022/07/21 22:18:20 listening on 6443
 2022/07/21 22:18:26 request certificate subject: CN=client
 ```
 

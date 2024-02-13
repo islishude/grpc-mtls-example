@@ -1,5 +1,5 @@
 build:
-	rm -rf dist && mkdir -p dist
+	mkdir -p dist
 	go build -o ./dist ./cmd/...
 
 protogen:

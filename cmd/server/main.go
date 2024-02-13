@@ -30,21 +30,24 @@ func main() {
 	basectx, casncel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer casncel()
 
-	listener, err := net.Listen("tcp", ":10200")
-	if err != nil {
-		panic(err)
-	}
-
 	go func() {
-		<-basectx.Done()
-		server.GracefulStop()
-		log.Println("bye")
+		port := ":6443"
+
+		log.Println("listen and serving on", port)
+
+		listener, err := net.Listen("tcp", port)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := server.Serve(listener); err != nil {
+			panic(err)
+		}
 	}()
 
-	log.Println("listen and serving...")
-	if err := server.Serve(listener); err != nil {
-		panic(err)
-	}
+	<-basectx.Done()
+	log.Println("bye")
+	server.GracefulStop()
 }
 
 func MiddlewareHandler(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {

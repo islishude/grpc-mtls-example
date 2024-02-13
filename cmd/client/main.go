@@ -18,7 +18,7 @@ func main() {
 		panic(err)
 	}
 
-	conn, err := grpc.Dial("localhost:10200", grpc.WithTransportCredentials(tlsConfig))
+	conn, err := grpc.Dial("localhost:6443", grpc.WithTransportCredentials(tlsConfig))
 	if err != nil {
 		panic(err)
 	}
